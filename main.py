@@ -27,7 +27,7 @@ if uploaded_file is not None:
         image.thumbnail((max_size, max_size))
 
         # Display the uploaded image
-        st.image(image, caption='Uploaded Image.', use_column_width=True)
+        st.image(image, caption='Uploaded Image.', use_container_width=True)
 
         # Convert the image to base64
         buffered = io.BytesIO()
