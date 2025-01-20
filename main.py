@@ -54,8 +54,7 @@ if uploaded_file is not None:
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         # Initialize Together client
-        api_key = st.secrets["TOGETHER_API_KEY"]  # Replace with your actual API key
-        client = Together(api_key=api_key)
+        
 
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
@@ -78,44 +77,45 @@ if uploaded_file is not None:
 
 
         # Send the image and query to the Together API
-        response = client.chat.completions.create(
-            model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": query},  # Query
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens=500
-        )
-
-        # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        # client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
         # response = client.chat.completions.create(
-        #     model="gpt-4o",
+        #     model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
         #     messages=[
         #         {
         #             "role": "user",
         #             "content": [
-        #                 {
-        #                     "type": "text",
-        #                     "text": query,
-        #                 },
+        #                 {"type": "text", "text": query},  # Query
         #                 {
         #                     "type": "image_url",
-        #                     "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
-        #                 },
-        #             ],
+        #                     "image_url": {
+        #                         "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
+        #                     }
+        #                 }
+        #             ]
         #         }
         #     ],
+        #     max_tokens=500
         # )
+
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": query,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+                        },
+                    ],
+                }
+            ],
+        )
 
         # Load student answers from the response
         # Display the API response
@@ -205,6 +205,7 @@ if uploaded_file is not None:
         ]
 
         results_df = pd.DataFrame(results)
+        results_df.set_index(results_df.columns[0])
         st.write("Summary Table:")
         # st.write(results_df)
 
