@@ -74,7 +74,7 @@ if uploaded_file is not None:
         # query = "What is in this image?"  # Replace with your desired query
         query = """
         Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different formats (e.g., Câu 1: A, 1. A, Câu 1 - A, Bài 1: A, etc.).
-        Any similar format in Vietnamese where the question number (e.g., Câu X or X. or ..X) is followed by the answer (a single letter: A, B, C, etc.).
+        Treat all formats like Bài 1: A, Câu 1: A, or 1. A as referring to Câu X: A for consistency.
         Rules:
         Output only the JSON object, with no additional text, explanations, or formatting.
         Do not include backticks, code blocks, or language specifiers.
