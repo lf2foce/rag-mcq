@@ -57,14 +57,22 @@ if uploaded_file is not None:
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
         query = """
-        Analyze the image of the exam and extract the student's answers to the multiple-choice questions in the following JSON format:
+        Analyze the image of the exam and extract the student's multiple-choice answers. 
+        The answers can appear in different formats, such as:
+
+        Câu 1: A
+        1. A
+        Câu 1 - A
+
+        Any similar format in Vietnamese where the question number (Câu X or X.) is followed by the answer (a single letter like A, B, C).
+        Extract only the multiple-choice answers in the following JSON format:
         {
             "Câu 1": "A",
             "Câu 2": "B",
             "Câu 3": "C",
             ...
         }
-        Only output the JSON data, nothing else.
+        Ignore unrelated text, notes, or handwriting. Do not include any commentary, explanation, or extra text—only return the JSON object with the answers
         """
 
 
@@ -99,7 +107,6 @@ if uploaded_file is not None:
             student_answers = json.loads(response.choices[0].message.content)
         except json.JSONDecodeError:
             st.error("Invalid response format. Please check the input.")
-
         
 
         # Predefined correct answers
