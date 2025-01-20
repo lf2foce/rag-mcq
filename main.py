@@ -73,51 +73,50 @@ if uploaded_file is not None:
             "Câu 3": "C",
             "Câu 4": "E"
         }
-        Strictly return the JSON object, and nothing else."
+        Strictly return the JSON object, and nothing else (e.g opening something before json object).
         """
 
 
         # Send the image and query to the Together API
-        # response = client.chat.completions.create(
-        #     model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": [
-        #                 {"type": "text", "text": query},  # Query
-        #                 {
-        #                     "type": "image_url",
-        #                     "image_url": {
-        #                         "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        #     max_tokens=500
-        # )
-
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": query,
-                        },
+                        {"type": "text", "text": query},  # Query
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
-                        },
-                    ],
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
+                            }
+                        }
+                    ]
                 }
             ],
+            max_tokens=500
         )
 
-        # student_answers = eval(response.choices[0].message.content)
+        # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        # response = client.chat.completions.create(
+        #     model="gpt-4o",
+        #     messages=[
+        #         {
+        #             "role": "user",
+        #             "content": [
+        #                 {
+        #                     "type": "text",
+        #                     "text": query,
+        #                 },
+        #                 {
+        #                     "type": "image_url",
+        #                     "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+        #                 },
+        #             ],
+        #         }
+        #     ],
+        # )
+
         # Load student answers from the response
         # Display the API response
         st.success("Hình ảnh đã được xử lý")
@@ -186,13 +185,13 @@ if uploaded_file is not None:
         st.success("Exam analysis complete!")
         st.write(f"Student Score: {score}/{len(correct_answers)}")
 
-        if incorrect_questions:
-            st.warning("Incorrect Questions:")
-            st.write(incorrect_questions)
+        # if incorrect_questions:
+        #     st.warning("Incorrect Questions:")
+        #     st.write(incorrect_questions)
 
-        if skipped_questions:
-            st.info("Skipped Questions:")
-            st.write(", ".join(skipped_questions))
+        # if skipped_questions:
+        #     st.info("Skipped Questions:")
+        #     st.write(", ".join(skipped_questions))
 
         # Display summary table
         results = [
@@ -207,7 +206,9 @@ if uploaded_file is not None:
 
         results_df = pd.DataFrame(results)
         st.write("Summary Table:")
-        st.write(results_df)
+        # st.write(results_df)
+
+        st.dataframe(results_df, use_container_width=True)
         ### chatgpt end here
 
         
