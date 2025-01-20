@@ -89,12 +89,19 @@ if uploaded_file is not None:
         )
         # student_answers = eval(response.choices[0].message.content)
         # Load student answers from the response
+        # Display the API response
+        st.success("Hình ảnh đã được xử lý")
+        st.write("Kết quả lấy từ ảnh:")
+        st.write(response.choices[0].message.content) 
+
         import json
         try:
             student_answers = json.loads(response.choices[0].message.content)
         except json.JSONDecodeError:
             st.error("Invalid response format. Please check the input.")
-    
+
+        
+
         # Predefined correct answers
         correct_answers = {
             "Câu 1": "D",
@@ -171,10 +178,7 @@ if uploaded_file is not None:
         st.write(results_df)
         ### chatgpt end here
 
-        # Display the API response
-        st.success("Kết quả đã được tính toán!")
-        st.write("Kết quả lấy từ ảnh:")
-        st.write(response.choices[0].message.content)  # Display the response content
+        
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
