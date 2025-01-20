@@ -13,7 +13,10 @@ import pandas as pd
 register_heif_opener()
 
 # Streamlit app title
-st.title("Llama Vision Image Uploader")
+st.title("Vision Image Uploader")
+
+# Initialize the session state for the uploader key
+
 
 def calculate_score(student_answers, correct_answers):
     score = 0
@@ -31,9 +34,20 @@ def calculate_score(student_answers, correct_answers):
                 }
     return score, incorrect_questions, skipped_questions
 # Allow image upload
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png", "heic"])
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = 0
+
+def reset_uploader():
+    """Function to reset the file uploader."""
+    st.session_state["uploader_key"] += 1
+
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png", "heic"], key=f"uploader_{st.session_state['uploader_key']}",)
 
 if uploaded_file is not None:
+    # Add a button to clear/reset the uploader
+    if st.button("Upload another file"):
+        reset_uploader()
+        st.rerun()
     try:
         # Open the image
         image = Image.open(uploaded_file)
@@ -183,7 +197,7 @@ if uploaded_file is not None:
 
         # Display results
         st.success("Exam analysis complete!")
-        st.write(f"Student Score: {score}/{len(correct_answers)}")
+        st.write(f":red[Student Score: {score}/{len(correct_answers)}]")
 
         # if incorrect_questions:
         #     st.warning("Incorrect Questions:")
@@ -205,14 +219,14 @@ if uploaded_file is not None:
         ]
 
         results_df = pd.DataFrame(results)
-        results_df.set_index(results_df.columns[0])
+        results_df.set_index(results_df.columns[0], inplace=True)
+        results_df["Result"] = results_df["Result"].apply(lambda x: "✅ Đúng" if x == "Correct" else "❌ Sai")
+
         st.write("Summary Table:")
         # st.write(results_df)
 
         st.dataframe(results_df, use_container_width=True)
         ### chatgpt end here
-
-        
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
