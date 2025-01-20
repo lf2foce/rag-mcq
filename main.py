@@ -35,7 +35,7 @@ if uploaded_file is not None:
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         # Initialize Together client
-        api_key = "acccf8bfdc8ab95ed846c49dd53e14a3da5bb05355a8213950b6da5f51d6b3c6"  # Replace with your actual API key
+        api_key = st.secrets["TOGETHER_API_KEY"]  # Replace with your actual API key
         client = Together(api_key=api_key)
 
         # Define the query
