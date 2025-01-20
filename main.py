@@ -57,22 +57,25 @@ if uploaded_file is not None:
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
         query = """
-        Analyze the image of the exam and extract the student's multiple-choice answers. 
-        The answers can appear in different formats, such as:
+        Extract only the multiple-choice answers from the image. The answers can be in different formats, such as:
 
         Câu 1: A
         1. A
         Câu 1 - A
-        
-        Any similar format in Vietnamese where the question number (Câu X or X.) is followed by the answer (a single letter like A, B, C).
-        Provide the output strictly in this format:
+        Any similar format in Vietnamese where the question number (e.g., Câu X or X.) is followed by the answer (a single letter: A, B, C, etc.).
+        Output only the answers as a JSON object, strictly in the following format:
         {
             "Câu 1": "A",
             "Câu 2": "B",
             "Câu 3": "C",
             ...
         }
-        Ignore unrelated text, notes, or handwriting. Do not include any commentary, explanation, or extra text—only return the JSON object with the answers
+        Rules:
+
+        Ignore all unrelated text, handwriting, or notes in the image.
+        Do not include any commentary, explanations, or additional text—only return the JSON object.
+        If a question is missing, skip it (do not include it in the JSON).
+        Return only the JSON object, without adding any other text or explanations.
         """
 
 
