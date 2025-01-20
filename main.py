@@ -45,7 +45,7 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 
 if uploaded_file is not None:
     # Add a button to clear/reset the uploader
-    if st.button("Upload another file"):
+    if st.button("Upload ảnh khác"):
         reset_uploader()
         st.rerun()
     try:
