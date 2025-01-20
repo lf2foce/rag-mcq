@@ -63,9 +63,9 @@ if uploaded_file is not None:
         Câu 1: A
         1. A
         Câu 1 - A
-
+        
         Any similar format in Vietnamese where the question number (Câu X or X.) is followed by the answer (a single letter like A, B, C).
-        Extract only the multiple-choice answers in the following JSON format:
+        Provide the output strictly in this format:
         {
             "Câu 1": "A",
             "Câu 2": "B",
