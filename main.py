@@ -4,6 +4,7 @@ import io
 import base64
 from pillow_heif import register_heif_opener
 from together import Together
+import pandas as pd
 
 # Register HEIF opener to support .HEIC images
 register_heif_opener()
@@ -11,6 +12,21 @@ register_heif_opener()
 # Streamlit app title
 st.title("Llama Vision Image Uploader")
 
+def calculate_score(student_answers, correct_answers):
+    score = 0
+    incorrect_questions = {}
+    skipped_questions = set(correct_answers.keys()) - set(student_answers.keys())
+
+    for question, correct_answer in correct_answers.items():
+        if question in student_answers:
+            if student_answers[question].upper() == correct_answer.upper():
+                score += 1
+            else:
+                incorrect_questions[question] = {
+                    "Student Answer": student_answers[question],
+                    "Correct Answer": correct_answer
+                }
+    return score, incorrect_questions, skipped_questions
 # Allow image upload
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png", "heic"])
 
@@ -39,7 +55,18 @@ if uploaded_file is not None:
         client = Together(api_key=api_key)
 
         # Define the query
-        query = "What is in this image?"  # Replace with your desired query
+        # query = "What is in this image?"  # Replace with your desired query
+        query = """
+        Analyze the image of the exam and extract the student's answers to the multiple-choice questions in the following JSON format:
+        {
+            "Câu 1": "A",
+            "Câu 2": "B",
+            "Câu 3": "C",
+            ...
+        }
+        Only output the JSON data, nothing else.
+        """
+
 
         # Send the image and query to the Together API
         response = client.chat.completions.create(
@@ -60,10 +87,93 @@ if uploaded_file is not None:
             ],
             max_tokens=500
         )
+        # student_answers = eval(response.choices[0].message.content)
+        # Load student answers from the response
+        import json
+        try:
+            student_answers = json.loads(response.choices[0].message.content)
+        except json.JSONDecodeError:
+            st.error("Invalid response format. Please check the input.")
+    
+        # Predefined correct answers
+        correct_answers = {
+            "Câu 1": "D",
+            "Câu 2": "C",
+            "Câu 3": "D",
+            "Câu 4": "C",
+            "Câu 5": "C",
+            "Câu 6": "C",
+            "Câu 7": "A",
+            "Câu 8": "A",
+            "Câu 9": "B",
+            "Câu 10": "B",
+            "Câu 11": "C",
+            "Câu 12": "D",
+            "Câu 13": "B",
+            "Câu 14": "B",
+            "Câu 15": "B",
+            "Câu 16": "A",
+            "Câu 17": "B",
+            "Câu 18": "A",
+            "Câu 19": "C",
+            "Câu 20": "C",
+            "Câu 21": "B",
+            "Câu 22": "A",
+            "Câu 23": "B",
+            "Câu 24": "D",
+            "Câu 25": "B"
+        }
+
+        # Calculate the score
+        # score = 0
+        # total_questions = len(correct_answers)
+
+        # for question, correct_answer in correct_answers.items():
+        #     if question in student_answers:
+        #         if student_answers[question].upper() == correct_answer.upper():
+        #             score += 1
+
+        # # Display the results
+        # st.success("Exam analysis complete!")
+        # st.write("Student Answers:", student_answers)
+        # st.write(f"Student Score: {score}/{total_questions}")
+        
+        ### chatgpt
+
+        # Calculate results
+        score, incorrect_questions, skipped_questions = calculate_score(student_answers, correct_answers)
+
+        # Display results
+        st.success("Exam analysis complete!")
+        st.write(f"Student Score: {score}/{len(correct_answers)}")
+
+        if incorrect_questions:
+            st.warning("Incorrect Questions:")
+            st.write(incorrect_questions)
+
+        if skipped_questions:
+            st.info("Skipped Questions:")
+            st.write(", ".join(skipped_questions))
+
+        # Display summary table
+        results = [
+            {
+                "Question": question,
+                "Student Answer": student_answers.get(question, "Skipped"),
+                "Correct Answer": correct_answer,
+                "Result": "Correct" if student_answers.get(question, "").upper() == correct_answer.upper() else "Incorrect"
+            }
+            for question, correct_answer in correct_answers.items()
+        ]
+
+        results_df = pd.DataFrame(results)
+        st.write("Summary Table:")
+        st.write(results_df)
+        ### chatgpt end here
 
         # Display the API response
-        st.success("API call successful!")
-        st.write("Here is the result:")
+        st.success("Kết quả đã được tính toán!")
+        st.write("Kết quả lấy từ ảnh:")
         st.write(response.choices[0].message.content)  # Display the response content
 
     except Exception as e:
