@@ -4,6 +4,9 @@ import io
 import base64
 from pillow_heif import register_heif_opener
 from together import Together
+from openai import OpenAI
+import re
+
 import pandas as pd
 
 # Register HEIF opener to support .HEIC images
@@ -57,47 +60,63 @@ if uploaded_file is not None:
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
         query = """
-        Extract only the multiple-choice answers from the image. The answers can be in different formats, such as:
+        Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different formats (e.g., Câu 1: A, 1. A, Câu 1 - A, etc.).
 
-        Câu 1: A
-        1. A
-        Câu 1 - A
-        Any similar format in Vietnamese where the question number (e.g., Câu X or X.) is followed by the answer (a single letter: A, B, C, etc.).
-        Output only the answers as a JSON object, strictly in the following format:
+        Rules:
+
+        Output only the JSON object, with no additional text, explanations, or formatting.
+        Do not include backticks, code blocks, or language specifiers.
+        Example output:
         {
             "Câu 1": "A",
             "Câu 2": "B",
             "Câu 3": "C",
-            ...
+            "Câu 4": "E"
         }
-        Rules:
-
-        Ignore all unrelated text, handwriting, or notes in the image.
-        Do not include any commentary, explanations, or additional text—only return the JSON object.
-        If a question is missing, skip it (do not include it in the JSON).
-        Return only the JSON object, without adding any other text or explanations.
+        Strictly return the JSON object, and nothing else."
         """
 
 
         # Send the image and query to the Together API
+        # response = client.chat.completions.create(
+        #     model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
+        #     messages=[
+        #         {
+        #             "role": "user",
+        #             "content": [
+        #                 {"type": "text", "text": query},  # Query
+        #                 {
+        #                     "type": "image_url",
+        #                     "image_url": {
+        #                         "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
+        #                     }
+        #                 }
+        #             ]
+        #         }
+        #     ],
+        #     max_tokens=500
+        # )
+
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         response = client.chat.completions.create(
-            model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": query},  # Query
+                        {
+                            "type": "text",
+                            "text": query,
+                        },
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
-                            }
-                        }
-                    ]
+                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+                        },
+                    ],
                 }
             ],
-            max_tokens=500
         )
+
         # student_answers = eval(response.choices[0].message.content)
         # Load student answers from the response
         # Display the API response
@@ -106,10 +125,13 @@ if uploaded_file is not None:
         st.write(response.choices[0].message.content) 
 
         import json
+        response_content = response.choices[0].message.content
+        print(response_content)
         try:
-            student_answers = json.loads(response.choices[0].message.content)
+            student_answers = json.loads(response_content.strip())
         except json.JSONDecodeError:
             st.error("Invalid response format. Please check the input.")
+        
         
 
         # Predefined correct answers
