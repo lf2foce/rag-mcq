@@ -56,15 +56,15 @@ if uploaded_file is not None:
         image = ImageOps.exif_transpose(image)
 
         # Resize the image to a manageable size (optional)
-        max_size = 1024  # Max width or height
-        image.thumbnail((max_size, max_size))
+        # max_size = 1024  # Max width or height
+        # image.thumbnail((max_size, max_size))
 
         # Display the uploaded image
         st.image(image, caption='Uploaded Image.', use_container_width=True)
 
         # Convert the image to base64
         buffered = io.BytesIO()
-        image.save(buffered, format="JPEG")  # Save as JPEG
+        image.save(buffered, format="PNG")  # Save as JPEG
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         # Initialize Together client
@@ -73,23 +73,27 @@ if uploaded_file is not None:
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
         query = """
-        Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different formats (e.g., Câu 1: A, 1. A, Câu 1 - A, Bài 1: A, etc.).
-        Ignore any background noise, blurred lines, or artifacts, and focus only on the clearly written text.
-        Treat all formats like Bài 1: A, Câu 1: A, or 1. A as referring to Câu X: A for consistency.
-        Ensures alignment between question numbers and answers
+        Instructions:
+        
+        1. Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different vietnamese formats (e.g., Câu 1: A, 1. A, Câu 1 - A, Bài 1: A, etc.).
+        2. Treat all formats like Bài 1: A, Câu 1: A, or 1. A as referring to Câu X: A for consistency.
+        3. Ignore any background noise, blurred lines, or artifacts, and focus only on clearly legible text.
+        4. Ensure alignment between question numbers and their corresponding answers.
+        5. If the line is misaligned or unreadable, skip it entirely.
         
         Rules:
 
-        Output only the JSON object, with no additional text, explanations, or formatting.
-        Do not include backticks, code blocks, or language specifiers.
+        1. Output only the JSON object, with no additional text, explanations, or formatting.
+        2. Do not include backticks, code blocks, or language specifiers.
+        
         Example output:
         {
             "Câu 1": "A",
             "Câu 2": "B",
             "Câu 3": "C",
-            "Câu 4": "E"
+            "Câu 4": "D"
         }
-        Strictly return the JSON object, and nothing else (e.g opening something before json object).
+        Strictly return the JSON object, and nothing else (e.g opening something before json object)
         """
 
 
@@ -112,7 +116,8 @@ if uploaded_file is not None:
                     ]
                 }
             ],
-            max_tokens=1000
+            max_tokens=2048,
+            temperature=0.3,  # Lower temperature for deterministic output
         )
 
         # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -182,21 +187,7 @@ if uploaded_file is not None:
             "Câu 25": "B"
         }
 
-        # Calculate the score
-        # score = 0
-        # total_questions = len(correct_answers)
-
-        # for question, correct_answer in correct_answers.items():
-        #     if question in student_answers:
-        #         if student_answers[question].upper() == correct_answer.upper():
-        #             score += 1
-
-        # # Display the results
-        # st.success("Exam analysis complete!")
-        # st.write("Student Answers:", student_answers)
-        # st.write(f"Student Score: {score}/{total_questions}")
-        
-        ### chatgpt
+      
 
         # Calculate results
         score, incorrect_questions, skipped_questions = calculate_score(student_answers, correct_answers)
@@ -205,14 +196,7 @@ if uploaded_file is not None:
         st.success("Exam analysis complete!")
         st.write(f":red[Student Score: {score}/{len(correct_answers)}]")
 
-        # if incorrect_questions:
-        #     st.warning("Incorrect Questions:")
-        #     st.write(incorrect_questions)
-
-        # if skipped_questions:
-        #     st.info("Skipped Questions:")
-        #     st.write(", ".join(skipped_questions))
-
+      
         # Display summary table
         results = [
             {
