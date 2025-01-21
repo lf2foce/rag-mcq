@@ -56,8 +56,8 @@ if uploaded_file is not None:
         image = ImageOps.exif_transpose(image)
 
         # Resize the image to a manageable size (optional)
-        # max_size = 1024  # Max width or height
-        # image.thumbnail((max_size, max_size))
+        max_size = 2048  # Max width or height
+        image.thumbnail((max_size, max_size))
 
         # Display the uploaded image
         st.image(image, caption='Uploaded Image.', use_container_width=True)
