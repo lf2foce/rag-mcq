@@ -73,14 +73,8 @@ if uploaded_file is not None:
         # Define the query
         # query = "What is in this image?"  # Replace with your desired query
         query = """
-        Instructions:
-        
-        1. Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different vietnamese formats (e.g., Câu 1: A, 1. A, Câu 1 - A, Bài 1: A, etc.).
-        2. Treat all formats like Bài 1: A, Câu 1: A, or 1. A as referring to Câu X: A for consistency.
-        3. Ignore any background noise, blurred lines, or artifacts, and focus only on clearly legible text.
-        4. Ensure alignment between question numbers and their corresponding answers.
-        5. If the line is misaligned or unreadable, skip it entirely.
-        
+        You are an expert at extracting multiple-choice answers from images of exam sheets. Your task is to analyze the image and extract the student's answers in a structured JSON format. Follow these rules carefully:
+
         Rules:
 
         1. Output only the JSON object, with no additional text, explanations, or formatting.
@@ -102,7 +96,45 @@ if uploaded_file is not None:
         response = client.chat.completions.create(
             model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
             messages=[
-                # { "role": "system", "content": "You are an assistant that extracts answers from text. Your role is to identify answers written in various formats (e.g., 'Câu 1: A', '1. A', 'Câu 1 - A', 'Bài 1: A') and provide them in a standardized JSON format. Ensure to output only valid answers and skip any incomplete or irrelevant text. Return the results as a JSON object where each key is the question number (e.g., 'Câu 1') and the value is the answer choice (e.g., 'A'). Do not include any additional explanations or formatting." },
+                { 
+                    "role": "system", 
+                    "content": """
+                        1. **Extract Answers Consistently**:  
+                        - Identify answers written in various Vietnamese formats, such as:
+                            - 'Câu 1: A'
+                            - 'Câu 1 A'
+                            - '1 A'
+                            - '1. A'
+                            - 'Câu 1 - A'
+                            - 'Bài 1: A'
+                        - Normalize all formats to 'Câu X: A', where X is the question number and A is the answer in uppercase.
+
+                        2. **Multi-Column and Trigger Word Handling**:
+                        - If columns are detected in the image, process all columns carefully to ensure no data is skipped. 
+                        - If column detection fails, identify trigger words such as:
+                            - 'Câu', '1', 'Bài', or similar patterns that indicate the start of a question.
+                        - Use these trigger words to locate and associate answers with their corresponding question numbers.
+                        - Ensure proper alignment between detected questions and answers.
+
+                        3. **Handle Crossed-Out Answers Robustly**:
+                        - Detect if a choice has been crossed out (e.g., slashes, scribbles, strikethroughs).
+                        - Look for the **nearest clearly written answer** next to or near the crossed-out option.  
+                        - Prioritize this clear and legible answer as the final answer for the question.  
+                        - Example: If 'Câu 1: A' is crossed out and 'B' is clearly written nearby, return 'B'.
+                        - Consider answers written directly above, below, or to the side of the crossed-out choice.  
+                        - If no clear replacement answer is found, skip the question entirely.
+
+                        4. **Output Requirements**:  
+                        - Return a JSON object where:
+                            - Keys are question numbers formatted as 'Câu X'.
+                            - Values are the final answers in uppercase (A, B, C, or D).  
+                        - Exclude any explanations, irrelevant data, or extraneous formatting.  
+
+                        5. **Error Handling**:  
+                        - If the image has incomplete, unclear, or overlapping content, document skipped questions clearly, but do not include them in the JSON output."
+
+                        """
+                },
                 {
                     "role": "user",
                     "content": [
@@ -117,12 +149,12 @@ if uploaded_file is not None:
                 }
             ],
             max_tokens=2048,
-            temperature=0.3,  # Lower temperature for deterministic output
+            temperature=0.2,  # Lower temperature for deterministic output
         )
 
         # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         # response = client.chat.completions.create(
-        #     model="gpt-4o-2024-11-20",
+        #     model="gpt-4o", #-2024-11-20
         #     messages=[
         #         # { "role": "system", "content": "You are an assistant that extracts  answers from text. Your role is to identify answers written in various formats (e.g., 'Câu 1: A', '1. A', 'Câu 1 - A', 'Bài 1: A') and provide them in a standardized JSON format. Ensure to output only valid answers and skip any incomplete or irrelevant text. Return the results as a JSON object where each key is the question number (e.g., 'Câu 1') and the value is the answer choice (e.g., 'A'). Do not include any additional explanations or formatting." },
         #         {
