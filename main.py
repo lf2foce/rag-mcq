@@ -5,8 +5,7 @@ import base64
 from pillow_heif import register_heif_opener
 from together import Together
 from openai import OpenAI
-import re
-
+import json
 import pandas as pd
 
 # Register HEIF opener to support .HEIC images
@@ -14,9 +13,6 @@ register_heif_opener()
 
 # Streamlit app title
 st.title("Vision Image Uploader")
-
-# Initialize the session state for the uploader key
-
 
 def calculate_score(student_answers, correct_answers):
     score = 0
@@ -33,7 +29,8 @@ def calculate_score(student_answers, correct_answers):
                     "Correct Answer": correct_answer
                 }
     return score, incorrect_questions, skipped_questions
-# Allow image upload
+
+# Initialize the session state for the uploader key
 if "uploader_key" not in st.session_state:
     st.session_state["uploader_key"] = 0
 
@@ -41,13 +38,15 @@ def reset_uploader():
     """Function to reset the file uploader."""
     st.session_state["uploader_key"] += 1
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png", "heic"], key=f"uploader_{st.session_state['uploader_key']}",)
+# Allow image upload
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png", "heic"], key=f"uploader_{st.session_state['uploader_key']}")
 
 if uploaded_file is not None:
     # Add a button to clear/reset the uploader
     if st.button("Upload ảnh khác"):
         reset_uploader()
         st.rerun()
+
     try:
         # Open the image
         image = Image.open(uploaded_file)
@@ -64,14 +63,10 @@ if uploaded_file is not None:
 
         # Convert the image to base64
         buffered = io.BytesIO()
-        image.save(buffered, format="PNG")  # Save as JPEG
+        image.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-        # Initialize Together client
-        
-
         # Define the query
-        # query = "What is in this image?"  # Replace with your desired query
         query = """
         You are an expert at extracting multiple-choice answers from images of exam sheets. Your task is to analyze the image and extract the student's answers in a structured JSON format. Follow these rules carefully:
 
@@ -90,105 +85,113 @@ if uploaded_file is not None:
         Strictly return the JSON object, and nothing else (e.g opening something before json object)
         """
 
+        # Define the shared system prompt
+        system_prompt = """
+        1. **Extract Answers Consistently**:  
+        - Identify answers written in various Vietnamese formats, such as:
+            - 'Câu 1: A'
+            - 'Câu 1 A'
+            - '1 A'
+            - '1. A'
+            - 'Câu 1 - A'
+            - 'Bài 1: A'
+        - Normalize all formats to 'Câu X: A', where X is the question number and A is the answer in uppercase.
 
-        # Send the image and query to the Together API
-        client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
-        response = client.chat.completions.create(
-            model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
-            messages=[
+        2. **Multi-Column and Trigger Word Handling**:
+        - If columns are detected in the image, process all columns carefully to ensure no data is skipped. 
+        - If column detection fails, identify trigger words such as:
+            - 'Câu', '1', 'Bài', or similar patterns that indicate the start of a question.
+        - Use these trigger words to locate and associate answers with their corresponding question numbers.
+        - Ensure proper alignment between detected questions and answers.
+
+        3. **Handle Crossed-Out Answers Robustly**:
+        - Detect if a choice has been crossed out (e.g., slashes, scribbles, strikethroughs).
+        - Look for the **nearest clearly written answer** next to or near the crossed-out option.  
+        - Prioritize this clear and legible answer as the final answer for the question.  
+        - Example: If 'Câu 1: A' is crossed out and 'B' is clearly written nearby, return 'B'.
+        - Consider answers written directly above, below, or to the side of the crossed-out choice.  
+        - If no clear replacement answer is found, skip the question entirely.
+
+        4. **Output Requirements**:  
+        - Return a JSON object where:
+            - Keys are question numbers formatted as 'Câu X'.
+            - Values are the final answers in uppercase (A, B, C, or D).  
+        - Exclude any explanations, irrelevant data, or extraneous formatting.  
+
+        5. **Error Handling**:  
+        - If the image has incomplete, unclear, or overlapping content, document skipped questions clearly, but do not include them in the JSON output."
+        """
+
+        # Generic function to call any LLM API
+        def call_llm_api(api_name, image_base64, query, system_prompt):
+            """
+            Calls the specified LLM API to process the image and extract answers.
+
+            Args:
+                api_name (str): Name of the API to use ("Together API" or "OpenAI API").
+                image_base64 (str): Base64-encoded image.
+                query (str): The query to send to the API.
+                system_prompt (str): The system prompt to guide the model.
+
+            Returns:
+                response: The API response object.
+            """
+            # Define the messages payload (shared between both APIs)
+            messages = [
                 { 
                     "role": "system", 
-                    "content": """
-                        1. **Extract Answers Consistently**:  
-                        - Identify answers written in various Vietnamese formats, such as:
-                            - 'Câu 1: A'
-                            - 'Câu 1 A'
-                            - '1 A'
-                            - '1. A'
-                            - 'Câu 1 - A'
-                            - 'Bài 1: A'
-                        - Normalize all formats to 'Câu X: A', where X is the question number and A is the answer in uppercase.
-
-                        2. **Multi-Column and Trigger Word Handling**:
-                        - If columns are detected in the image, process all columns carefully to ensure no data is skipped. 
-                        - If column detection fails, identify trigger words such as:
-                            - 'Câu', '1', 'Bài', or similar patterns that indicate the start of a question.
-                        - Use these trigger words to locate and associate answers with their corresponding question numbers.
-                        - Ensure proper alignment between detected questions and answers.
-
-                        3. **Handle Crossed-Out Answers Robustly**:
-                        - Detect if a choice has been crossed out (e.g., slashes, scribbles, strikethroughs).
-                        - Look for the **nearest clearly written answer** next to or near the crossed-out option.  
-                        - Prioritize this clear and legible answer as the final answer for the question.  
-                        - Example: If 'Câu 1: A' is crossed out and 'B' is clearly written nearby, return 'B'.
-                        - Consider answers written directly above, below, or to the side of the crossed-out choice.  
-                        - If no clear replacement answer is found, skip the question entirely.
-
-                        4. **Output Requirements**:  
-                        - Return a JSON object where:
-                            - Keys are question numbers formatted as 'Câu X'.
-                            - Values are the final answers in uppercase (A, B, C, or D).  
-                        - Exclude any explanations, irrelevant data, or extraneous formatting.  
-
-                        5. **Error Handling**:  
-                        - If the image has incomplete, unclear, or overlapping content, document skipped questions clearly, but do not include them in the JSON output."
-
-                        """
+                    "content": system_prompt
                 },
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": query},  # Query
+                        {"type": "text", "text": query},
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
+                                "url": f"data:image/jpeg;base64,{image_base64}"
                             }
                         }
                     ]
                 }
-            ],
-            max_tokens=2048,
-            temperature=0.2,  # Lower temperature for deterministic output
-        )
+            ]
 
-        # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        # response = client.chat.completions.create(
-        #     model="gpt-4o", #-2024-11-20
-        #     messages=[
-        #         # { "role": "system", "content": "You are an assistant that extracts  answers from text. Your role is to identify answers written in various formats (e.g., 'Câu 1: A', '1. A', 'Câu 1 - A', 'Bài 1: A') and provide them in a standardized JSON format. Ensure to output only valid answers and skip any incomplete or irrelevant text. Return the results as a JSON object where each key is the question number (e.g., 'Câu 1') and the value is the answer choice (e.g., 'A'). Do not include any additional explanations or formatting." },
-        #         {
-        #             "role": "user",
-        #             "content": [
-        #                 {
-        #                     "type": "text",
-        #                     "text": query,
-        #                 },
-        #                 {
-        #                     "type": "image_url",
-        #                     "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
-        #                 },
-        #             ],
-        #         }
-        #     ],
-            
-        # )
+            # Initialize the client and model based on the API name
+            if api_name == "OpenAI API":
+                client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                model = "gpt-4o"
+            elif api_name == "Together API":
+                client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
+                model = "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo"
+            else:
+                raise ValueError(f"Unsupported API: {api_name}")
+
+            # Make the API call
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=2048,
+                temperature=0.2,  # Lower temperature for deterministic output
+            )
+
+            return response
+
+        # Select the API to use
+        api_choice = st.selectbox("Select API", ["OpenAI API", "Together API"])
+
+        # Call the selected API
+        response = call_llm_api(api_choice, img_base64, query, system_prompt)
 
         # Load student answers from the response
-        # Display the API response
         st.success("Hình ảnh đã được xử lý")
         st.write("Kết quả lấy từ ảnh:")
-        st.write(response.choices[0].message.content) 
+        st.write(response.choices[0].message.content)
 
-        import json
-        response_content = response.choices[0].message.content
-        print(response_content)
         try:
-            student_answers = json.loads(response_content.strip())
+            student_answers = json.loads(response.choices[0].message.content.strip())
         except json.JSONDecodeError:
             st.error("Invalid response format. Please check the input.")
-        
-        
+            student_answers = {}
 
         # Predefined correct answers
         correct_answers = {
@@ -219,8 +222,6 @@ if uploaded_file is not None:
             "Câu 25": "B"
         }
 
-      
-
         # Calculate results
         score, incorrect_questions, skipped_questions = calculate_score(student_answers, correct_answers)
 
@@ -228,7 +229,6 @@ if uploaded_file is not None:
         st.success("Exam analysis complete!")
         st.write(f":red[Student Score: {score}/{len(correct_answers)}]")
 
-      
         # Display summary table
         results = [
             {
@@ -241,14 +241,10 @@ if uploaded_file is not None:
         ]
 
         results_df = pd.DataFrame(results)
-        # results_df.set_index(results_df.columns[0], inplace=True)
         results_df["Result"] = results_df["Result"].apply(lambda x: "✅ Đúng" if x == "Correct" else "❌ Sai")
 
         st.write("Summary Table:")
-        # st.write(results_df)
-
         st.dataframe(results_df, use_container_width=True)
-        ### chatgpt end here
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
