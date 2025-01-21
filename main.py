@@ -74,8 +74,12 @@ if uploaded_file is not None:
         # query = "What is in this image?"  # Replace with your desired query
         query = """
         Extract the student's multiple-choice answers from the image and provide them as a valid JSON object. The answers may appear in different formats (e.g., Câu 1: A, 1. A, Câu 1 - A, Bài 1: A, etc.).
+        Ignore any background noise, blurred lines, or artifacts, and focus only on the clearly written text.
         Treat all formats like Bài 1: A, Câu 1: A, or 1. A as referring to Câu X: A for consistency.
+        Ensures alignment between question numbers and answers
+        
         Rules:
+
         Output only the JSON object, with no additional text, explanations, or formatting.
         Do not include backticks, code blocks, or language specifiers.
         Example output:
@@ -90,45 +94,48 @@ if uploaded_file is not None:
 
 
         # Send the image and query to the Together API
-        # client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
-        # response = client.chat.completions.create(
-        #     model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": [
-        #                 {"type": "text", "text": query},  # Query
-        #                 {
-        #                     "type": "image_url",
-        #                     "image_url": {
-        #                         "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        #     max_tokens=500
-        # )
-
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",  # Replace with your desired model
             messages=[
+                # { "role": "system", "content": "You are an assistant that extracts answers from text. Your role is to identify answers written in various formats (e.g., 'Câu 1: A', '1. A', 'Câu 1 - A', 'Bài 1: A') and provide them in a standardized JSON format. Ensure to output only valid answers and skip any incomplete or irrelevant text. Return the results as a JSON object where each key is the question number (e.g., 'Câu 1') and the value is the answer choice (e.g., 'A'). Do not include any additional explanations or formatting." },
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": query,
-                        },
+                        {"type": "text", "text": query},  # Query
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
-                        },
-                    ],
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{img_base64}"  # Base64-encoded image
+                            }
+                        }
+                    ]
                 }
             ],
+            max_tokens=1000
         )
+
+        # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        # response = client.chat.completions.create(
+        #     model="gpt-4o-2024-11-20",
+        #     messages=[
+        #         # { "role": "system", "content": "You are an assistant that extracts  answers from text. Your role is to identify answers written in various formats (e.g., 'Câu 1: A', '1. A', 'Câu 1 - A', 'Bài 1: A') and provide them in a standardized JSON format. Ensure to output only valid answers and skip any incomplete or irrelevant text. Return the results as a JSON object where each key is the question number (e.g., 'Câu 1') and the value is the answer choice (e.g., 'A'). Do not include any additional explanations or formatting." },
+        #         {
+        #             "role": "user",
+        #             "content": [
+        #                 {
+        #                     "type": "text",
+        #                     "text": query,
+        #                 },
+        #                 {
+        #                     "type": "image_url",
+        #                     "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+        #                 },
+        #             ],
+        #         }
+        #     ],
+            
+        # )
 
         # Load student answers from the response
         # Display the API response
@@ -218,7 +225,7 @@ if uploaded_file is not None:
         ]
 
         results_df = pd.DataFrame(results)
-        results_df.set_index(results_df.columns[0], inplace=True)
+        # results_df.set_index(results_df.columns[0], inplace=True)
         results_df["Result"] = results_df["Result"].apply(lambda x: "✅ Đúng" if x == "Correct" else "❌ Sai")
 
         st.write("Summary Table:")
