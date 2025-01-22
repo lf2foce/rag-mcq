@@ -68,7 +68,8 @@ if uploaded_file is not None:
 
         # Define the query
         query = """
-        You are an expert at extracting multiple-choice answers from images of exam sheets. Your task is to analyze the image and extract the student's answers in a structured JSON format. Follow these rules carefully:
+        You are an expert at extracting multiple-choice answers from images of exam sheets. 
+        Your task is to Detect and align all answers to their corresponding question numbers (pay attention to cross awnsers) in a structured JSON format. Follow these rules carefully:
 
         Rules:
 
@@ -120,6 +121,24 @@ if uploaded_file is not None:
 
         5. **Error Handling**:  
         - If the image has incomplete, unclear, or overlapping content, document skipped questions clearly, but do not include them in the JSON output."
+        
+        6. **Ambiguity Resolution**:
+        - If two possible answers are detected (e.g., '6 A' and '6 B'):
+        - Prioritize the answer written directly next to the question number.
+        - Consider markings or clarity to select the most legible option.
+        
+        7. **Image Pre-Processing**:
+        - Use techniques like contrast enhancement or noise reduction to improve the clarity of handwritten text before analysis.
+        
+        8. **Multi-Line and Multi-Column Detection**:
+        - Handle scenarios where answers are spread across multiple columns or written in uneven rows.
+        - Use spatial relationships to infer the continuation of question numbers and answers.
+        
+        9. **Robust Cross-Validation**:
+        - Cross-check answers by analyzing both the detected answer and its neighboring context.
+        - Example: If '6 A' is detected but neighboring numbers suggest misalignment, reassess the association.
+        - Detect skipped or ambiguous rows and log them as potential errors.
+
         """
 
         # Generic function to call any LLM API
@@ -159,7 +178,7 @@ if uploaded_file is not None:
             # Initialize the client and model based on the API name
             if api_name == "OpenAI API":
                 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                model = "gpt-4o"
+                model = "gpt-4o-2024-11-20"
             elif api_name == "Together API":
                 client = Together(api_key=st.secrets["TOGETHER_API_KEY"])
                 model = "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo"
@@ -171,7 +190,7 @@ if uploaded_file is not None:
                 model=model,
                 messages=messages,
                 max_tokens=2048,
-                temperature=0.2,  # Lower temperature for deterministic output
+                temperature=0.1,  # Lower temperature for deterministic output
             )
 
             return response
@@ -214,7 +233,7 @@ if uploaded_file is not None:
             "Câu 17": "B",
             "Câu 18": "A",
             "Câu 19": "C",
-            "Câu 20": "C",
+            "Câu 20": "D",
             "Câu 21": "B",
             "Câu 22": "A",
             "Câu 23": "B",
