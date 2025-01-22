@@ -105,12 +105,12 @@ if uploaded_file is not None:
         - Ensure proper alignment between detected questions and answers.
 
         3. **Handle Crossed-Out Answers Robustly**:
-        - Detect if a choice has been crossed out (e.g., slashes, scribbles, strikethroughs).
-        - Look for the **nearest clearly written answer** next to or near the crossed-out option.  
-        - Prioritize this clear and legible answer as the final answer for the question.  
-        - Example: If 'Câu 1: A' is crossed out and 'B' is clearly written nearby, return 'B'.
-        - Consider answers written directly above, below, or to the side of the crossed-out choice.  
-        - If no clear replacement answer is found, skip the question entirely.
+        - Detect crossed-out answers (e.g., strikethroughs, scribbles, slashes).
+        - Prioritize the **nearest legible answer** next to or near the crossed-out choice:
+        - Example: If 'Câu 1: A' is crossed out and 'B' is nearby, select 'B' as the final answer.
+        - Consider answers written directly above, below, or to the side of the crossed-out option.
+        - If no clear replacement is found, omit the question from the output.
+
 
         4. **Output Requirements**:  
         - Return a JSON object where:
@@ -228,6 +228,8 @@ if uploaded_file is not None:
         # Display results
         st.success("Exam analysis complete!")
         st.write(f":red[Student Score: {score}/{len(correct_answers)}]")
+        st.write(f":red[Điểm: {round(0.2*score,2)}]")
+
 
         # Display summary table
         results = [
@@ -242,7 +244,9 @@ if uploaded_file is not None:
 
         results_df = pd.DataFrame(results)
         results_df["Result"] = results_df["Result"].apply(lambda x: "✅ Đúng" if x == "Correct" else "❌ Sai")
-
+        results_df = results_df.reset_index(drop=True)
+        # results_df = results_df.sort_values(by=['Question'], ascending=True)
+        results_df = results_df.sort_index()
         st.write("Summary Table:")
         st.dataframe(results_df, use_container_width=True)
 
